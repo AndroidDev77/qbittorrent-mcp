@@ -546,7 +546,7 @@ async def add_trackers_to_torrent_api(hash: str, trackers: List[str], host: str 
     
     Args:
         hash: Torrent hash value
-        trackers: Tracker URLs (list or string)
+        trackers: List of tracker URLs
         host: qBittorrent WebUI host address
         username: Username
         password: Password

@@ -656,8 +656,8 @@ async def search_torrents_api(
         category: 搜索类别 (all, movies, anime, books, tv, software等)，默认为all
         plugins: 搜索插件 (all或特定插件)，默认为all
         max_size_gb: 最大文件大小限制(GB)，默认为5GB
-        limit: 结果数量限制，默认为100
-        offset: 结果偏移量，默认为0
+        limit: 内部参数，控制API返回的结果数量，默认为100
+        offset: 内部参数，控制结果偏移量，默认为0
         host: qBittorrent WebUI主机地址
         username: 用户名
         password: 密码
@@ -707,28 +707,42 @@ async def search_torrents_api(
                     "response": search_result
                 })
             
-            # Step 2: 获取搜索结果
-            results_data = {
-                "id": search_id,
-                "limit": limit,
-                "offset": offset
-            }
+            # Step 2: 轮询获取搜索结果，带超时机制
+            import asyncio
+            max_retries = 10
+            retry_delay = 1.0  # 秒
             
-            response = await client.post(
-                f"{host}/api/v2/search/results",
-                data=results_data,
-                cookies=cookies,
-                headers=headers
-            )
-            
-            if response.status_code != 200:
-                return json.dumps({
-                    "error": f"获取搜索结果失败: 状态码 {response.status_code}",
-                    "response": response.text
-                })
-            
-            results = response.json()
-            torrents = results.get('results', [])
+            for attempt in range(max_retries):
+                results_data = {
+                    "id": search_id,
+                    "limit": limit,
+                    "offset": offset
+                }
+                
+                response = await client.post(
+                    f"{host}/api/v2/search/results",
+                    data=results_data,
+                    cookies=cookies,
+                    headers=headers
+                )
+                
+                if response.status_code != 200:
+                    return json.dumps({
+                        "error": f"获取搜索结果失败: 状态码 {response.status_code}",
+                        "response": response.text
+                    })
+                
+                results = response.json()
+                status = results.get('status')
+                torrents = results.get('results', [])
+                
+                # 如果搜索完成或已有结果，跳出循环
+                if status == 'Stopped' or (torrents and len(torrents) > 0):
+                    break
+                
+                # 如果还在运行，等待后重试
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
             
             # Step 3: 过滤大于max_size_gb的文件
             max_size_bytes = max_size_gb * 1024 * 1024 * 1024  # 转换为字节

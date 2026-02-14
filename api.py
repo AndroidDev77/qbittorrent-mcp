@@ -546,11 +546,14 @@ async def add_trackers_to_torrent_api(hash: str, trackers: str, host: str = '', 
     
     Args:
         hash: Torrent hash value
-        trackers: Tracker URLs (string, multiple URLs separated by newline)
+        trackers: Tracker URLs as a string. Multiple URLs can be separated by newlines (use %0A for URL encoding)
         host: qBittorrent WebUI host address
         username: Username
         password: Password
-        example: hash=8c212779b4abde7c6bc608063a0d008b7e40ce32&urls=http://192.168.0.1/announce%0Audp://192.168.0.1:3333/dummyAnnounce
+        
+    Example:
+        hash=8c212779b4abde7c6bc608063a0d008b7e40ce32&urls=http://192.168.0.1/announce%0Audp://192.168.0.1:3333/dummyAnnounce
+        
     Returns:
         Result message of adding trackers
     """
@@ -583,13 +586,14 @@ async def add_torrent_tags_api(hash: str, tags: str, host: str = '', username: s
     Add torrent tags
     
     Args:
-        hash: Torrent hash value
-        tags: Tag list (string, multiple tags separated by comma)
+        hash: Torrent hash value (or multiple hashes separated by |)
+        tags: Tags as a comma-separated string (e.g., "TagName1,TagName2")
         host: qBittorrent WebUI host address
         username: Username
         password: Password
 
-        example: hashes=8c212779b4abde7c6bc608063a0d008b7e40ce32|284b83c9c7935002391129fd97f43db5d7cc2ba0&tags=TagName1,TagName2
+    Example:
+        hashes=8c212779b4abde7c6bc608063a0d008b7e40ce32|284b83c9c7935002391129fd97f43db5d7cc2ba0&tags=TagName1,TagName2
     
     Returns:
         Result message of adding torrent tags

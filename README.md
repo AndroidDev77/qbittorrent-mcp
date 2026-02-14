@@ -12,6 +12,7 @@ qBittorrent MCP 是一个基于 FastMCP 的服务，提供了与 qBittorrent Web
 - `pause_torrent`: 暂停种子下载
 - `resume_torrent`: 恢复种子下载
 - `get_torrent_list`: 获取所有种子列表
+- `search_torrents`: 搜索种子资源（支持分类过滤、大小限制、按种子数排序）
 
 ### 跟踪器与标签
 - `get_torrent_trackers`: 获取种子的跟踪器列表

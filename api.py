@@ -540,13 +540,13 @@ async def set_torrent_upload_limit_api(hash: str, limit: int, host: str = '', us
     except Exception as e:
         return f"Error: {str(e)}" 
 
-async def add_trackers_to_torrent_api(hash: str, trackers: List[str], host: str = '', username: str = '', password: str = '') -> str:
+async def add_trackers_to_torrent_api(hash: str, trackers: str, host: str = '', username: str = '', password: str = '') -> str:
     """
     Add trackers to torrent
     
     Args:
         hash: Torrent hash value
-        trackers: List of tracker URLs
+        trackers: Tracker URLs (string, multiple URLs separated by newline)
         host: qBittorrent WebUI host address
         username: Username
         password: Password
@@ -578,13 +578,16 @@ async def add_trackers_to_torrent_api(hash: str, trackers: List[str], host: str 
     except Exception as e:
         return f"Error: {str(e)}"
 
-async def add_torrent_tags_api(hash: str, tags: List[str], host: str = '', username: str = '', password: str = '') -> str:
+async def add_torrent_tags_api(hash: str, tags: str, host: str = '', username: str = '', password: str = '') -> str:
     """
     Add torrent tags
     
     Args:
         hash: Torrent hash value
-        tags: Tag list
+        tags: Tag list (string, multiple tags separated by comma)
+        host: qBittorrent WebUI host address
+        username: Username
+        password: Password
 
         example: hashes=8c212779b4abde7c6bc608063a0d008b7e40ce32|284b83c9c7935002391129fd97f43db5d7cc2ba0&tags=TagName1,TagName2
     

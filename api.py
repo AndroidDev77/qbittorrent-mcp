@@ -2,7 +2,12 @@ import httpx
 import os
 import json
 import base64
+import asyncio
 from typing import Dict, List, Union, Optional
+
+# 搜索相关常量
+SEARCH_MAX_RETRIES = 10
+SEARCH_RETRY_DELAY_SECONDS = 1.0
 
 async def login_to_qbittorrent(username, password, host):
     """
@@ -646,5 +651,153 @@ async def get_torrent_list_api(host: str = '', username: str = '', password: str
                 return f"Failed to get torrent list: status code {response.status_code}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+async def search_torrents_api(
+    pattern: str,
+    category: str = 'all',
+    plugins: str = 'all',
+    max_size_gb: float = 5.0,
+    limit: int = 100,
+    offset: int = 0,
+    host: str = '',
+    username: str = '',
+    password: str = ''
+) -> str:
+    """
+    搜索种子
+    
+    Args:
+        pattern: 搜索关键词
+        category: 搜索类别 (all, movies, anime, books, tv, software等)，默认为all
+        plugins: 搜索插件 (all或特定插件)，默认为all
+        max_size_gb: 最大文件大小限制(GB)，默认为5GB
+        limit: 内部参数，控制API返回的结果数量，默认为100
+        offset: 内部参数，控制结果偏移量，默认为0
+        host: qBittorrent WebUI主机地址
+        username: 用户名
+        password: 密码
+    
+    Returns:
+        搜索结果的JSON字符串，包含过滤和排序后的top 10结果
+    """
+    cookies = await login_to_qbittorrent(username, password, host)
+    if not cookies:
+        return json.dumps({"error": "登录失败，无法获取SID"})
+    
+    try:
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+        }
+        
+        # Step 1: 启动搜索
+        search_data = {
+            "pattern": pattern,
+            "category": category,
+            "plugins": plugins
+        }
+        
+        async with httpx.AsyncClient() as client:
+            # 启动搜索
+            response = await client.post(
+                f"{host}/api/v2/search/start",
+                data=search_data,
+                cookies=cookies,
+                headers=headers
+            )
+            
+            if response.status_code != 200:
+                return json.dumps({
+                    "error": f"启动搜索失败: 状态码 {response.status_code}",
+                    "response": response.text
+                })
+            
+            # 获取搜索ID
+            search_result = response.json()
+            search_id = search_result.get('id')
+            
+            if not search_id:
+                return json.dumps({
+                    "error": "未能获取搜索ID",
+                    "response": search_result
+                })
+            
+            # Step 2: 轮询获取搜索结果，带超时机制
+            torrents = []
+            status = None
+            
+            for attempt in range(SEARCH_MAX_RETRIES):
+                results_data = {
+                    "id": search_id,
+                    "limit": limit,
+                    "offset": offset
+                }
+                
+                response = await client.post(
+                    f"{host}/api/v2/search/results",
+                    data=results_data,
+                    cookies=cookies,
+                    headers=headers
+                )
+                
+                if response.status_code != 200:
+                    return json.dumps({
+                        "error": f"获取搜索结果失败: 状态码 {response.status_code}",
+                        "response": response.text
+                    })
+                
+                results = response.json()
+                status = results.get('status')
+                torrents = results.get('results', [])
+                
+                # 如果搜索完成，跳出循环
+                if status == 'Stopped':
+                    break
+                
+                # 如果已有结果且已经尝试多次，返回现有结果
+                if torrents and attempt >= 2:
+                    break
+                
+                # 如果还在运行，等待后重试
+                if attempt < SEARCH_MAX_RETRIES - 1:
+                    await asyncio.sleep(SEARCH_RETRY_DELAY_SECONDS)
+            
+            # 检查是否获取到结果
+            if not torrents and status != 'Stopped':
+                return json.dumps({
+                    "error": "搜索超时，未能获取到结果",
+                    "search_id": search_id,
+                    "status": status
+                })
+            
+            # Step 3: 过滤大于max_size_gb的文件
+            max_size_bytes = max_size_gb * 1024 * 1024 * 1024  # 转换为字节
+            filtered_torrents = [
+                torrent for torrent in torrents 
+                if torrent.get('fileSize', 0) <= max_size_bytes
+            ]
+            
+            # Step 4: 按nbSeeders降序排序
+            sorted_torrents = sorted(
+                filtered_torrents,
+                key=lambda x: x.get('nbSeeders', 0),
+                reverse=True
+            )
+            
+            # Step 5: 返回top 10
+            top_10 = sorted_torrents[:10]
+            
+            return json.dumps({
+                "search_id": search_id,
+                "pattern": pattern,
+                "total_results": len(torrents),
+                "filtered_results": len(filtered_torrents),
+                "results": top_10
+            }, ensure_ascii=False, indent=2)
+            
+    except Exception as e:
+        return json.dumps({
+            "error": f"错误: {str(e)}"
+        })
     
     

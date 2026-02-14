@@ -12,6 +12,7 @@ This service provides the following features:
 - `pause_torrent`: Pause torrent downloads
 - `resume_torrent`: Resume torrent downloads
 - `get_torrent_list`: Get list of all torrents
+- `search_torrents`: Search torrents
 
 ### Trackers and Tags
 - `get_torrent_trackers`: Get tracker list for a torrent

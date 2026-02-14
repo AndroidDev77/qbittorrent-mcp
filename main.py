@@ -19,7 +19,8 @@ from api import (
     set_torrent_upload_limit_api,
     add_trackers_to_torrent_api,
     add_torrent_tags_api,
-    get_torrent_list_api
+    get_torrent_list_api,
+    search_torrents_api
 )
 
 # Define key parameters
@@ -224,6 +225,35 @@ async def get_torrent_list() -> str:
     Get torrent list
     """
     return await get_torrent_list_api(host=DEFAULT_HOST, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+
+@app.tool()
+async def search_torrents(
+    pattern: str,
+    category: str = 'all',
+    plugins: str = 'all',
+    max_size_gb: float = 5.0
+) -> str:
+    """
+    搜索种子
+    
+    Args:
+        pattern: 搜索关键词
+        category: 搜索类别 (all, movies, anime, books, tv, software等)，默认为all
+        plugins: 搜索插件 (all或特定插件)，默认为all
+        max_size_gb: 最大文件大小限制(GB)，默认为5GB。结果会过滤掉大于此大小的文件
+        
+    Returns:
+        搜索结果的JSON字符串，包含过滤和排序后的top 10结果，按种子数(nbSeeders)降序排列
+    """
+    return await search_torrents_api(
+        pattern=pattern,
+        category=category,
+        plugins=plugins,
+        max_size_gb=max_size_gb,
+        host=DEFAULT_HOST,
+        username=DEFAULT_USERNAME,
+        password=DEFAULT_PASSWORD
+    )
 
 if __name__ == "__main__":
     app.run(transport='stdio')

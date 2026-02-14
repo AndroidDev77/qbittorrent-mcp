@@ -2,7 +2,12 @@ import httpx
 import os
 import json
 import base64
+import asyncio
 from typing import Dict, List, Union, Optional
+
+# 搜索相关常量
+SEARCH_MAX_RETRIES = 10
+SEARCH_RETRY_DELAY_SECONDS = 1.0
 
 async def login_to_qbittorrent(username, password, host):
     """
@@ -708,11 +713,7 @@ async def search_torrents_api(
                 })
             
             # Step 2: 轮询获取搜索结果，带超时机制
-            import asyncio
-            max_retries = 10
-            retry_delay = 1.0  # 秒
-            
-            for attempt in range(max_retries):
+            for attempt in range(SEARCH_MAX_RETRIES):
                 results_data = {
                     "id": search_id,
                     "limit": limit,
@@ -737,12 +738,12 @@ async def search_torrents_api(
                 torrents = results.get('results', [])
                 
                 # 如果搜索完成或已有结果，跳出循环
-                if status == 'Stopped' or (torrents and len(torrents) > 0):
+                if status == 'Stopped' or torrents:
                     break
                 
                 # 如果还在运行，等待后重试
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay)
+                if attempt < SEARCH_MAX_RETRIES - 1:
+                    await asyncio.sleep(SEARCH_RETRY_DELAY_SECONDS)
             
             # Step 3: 过滤大于max_size_gb的文件
             max_size_bytes = max_size_gb * 1024 * 1024 * 1024  # 转换为字节

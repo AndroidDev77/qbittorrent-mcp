@@ -546,7 +546,7 @@ async def add_trackers_to_torrent_api(hash: str, trackers: str, host: str = '', 
     
     Args:
         hash: Torrent hash value
-        trackers: Tracker URLs as a string. Multiple URLs can be separated by newlines (use %0A for URL encoding)
+        trackers: Tracker URLs as a string. Multiple URLs should be separated by the literal string "%0A" (URL-encoded newline)
         host: qBittorrent WebUI host address
         username: Username
         password: Password

@@ -713,6 +713,9 @@ async def search_torrents_api(
                 })
             
             # Step 2: 轮询获取搜索结果，带超时机制
+            torrents = []
+            status = None
+            
             for attempt in range(SEARCH_MAX_RETRIES):
                 results_data = {
                     "id": search_id,
@@ -737,13 +740,25 @@ async def search_torrents_api(
                 status = results.get('status')
                 torrents = results.get('results', [])
                 
-                # 如果搜索完成或已有结果，跳出循环
-                if status == 'Stopped' or torrents:
+                # 如果搜索完成，跳出循环
+                if status == 'Stopped':
+                    break
+                
+                # 如果已有结果且已经尝试多次，返回现有结果
+                if torrents and attempt >= 2:
                     break
                 
                 # 如果还在运行，等待后重试
                 if attempt < SEARCH_MAX_RETRIES - 1:
                     await asyncio.sleep(SEARCH_RETRY_DELAY_SECONDS)
+            
+            # 检查是否获取到结果
+            if not torrents and status != 'Stopped':
+                return json.dumps({
+                    "error": "搜索超时，未能获取到结果",
+                    "search_id": search_id,
+                    "status": status
+                })
             
             # Step 3: 过滤大于max_size_gb的文件
             max_size_bytes = max_size_gb * 1024 * 1024 * 1024  # 转换为字节
